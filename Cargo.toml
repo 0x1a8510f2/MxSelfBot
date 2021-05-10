@@ -1,0 +1,24 @@
+[package]
+name = "mxselfbot"
+version = "0.0.0"
+authors = ["0x1a8510f2 <admin@0x1a8510f2.space>"]
+edition = "2018"
+
+# Deps
+
+[dependencies.matrix-sdk]
+git = "https://github.com/matrix-org/matrix-rust-sdk.git"
+rev = "da57061db0c470e06dd366c5f3f61fb3a8bf235e"
+default-features = true
+features = ["encryption", "markdown"]
+
+[dependencies.signal-hook]
+version = "0.3.8"
+features = ["extended-siginfo"]
+
+[dependencies.tokio]
+version = "1"
+features = ["full"]
+
+[dependencies.url]
+version = "2"
