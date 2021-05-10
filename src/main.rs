@@ -146,18 +146,32 @@ async fn main() {
 
     */
 
-    // Get necessary data from command line args or exit if not provided
-    let (homeserver_url, username, password, command_prefix) =
-        match (std::env::args().nth(1), std::env::args().nth(2), std::env::args().nth(3), std::env::args().nth(4)) {
-            (Some(a), Some(b), Some(c), Some(d)) => (a, b, c, d),
-            _ => {
-                eprintln!(
-                    "Usage: {} <homeserver_url> <username> <password> <command_prefix>",
-                    std::env::args().next().unwrap()
-                );
-                std::process::exit(1)
-            }
-        };
+    // Get info from environment variables
+    let homeserver_url = match std::env::var("MSB_HS_URL") {
+        Ok(value) => value,
+        Err(_) => {
+            eprintln!("Could not get the URL of the homeserver - please set the MSB_HS_URL environment variable");
+            std::process::exit(1);
+        }
+    };
+    let username = match std::env::var("MSB_USER") {
+        Ok(value) => value,
+        Err(_) => {
+            eprintln!("Could not get the username to log in as - please set the MSB_USER environment variable");
+            std::process::exit(1);
+        }
+    };
+    let password = match std::env::var("MSB_PASS") {
+        Ok(value) => value,
+        Err(_) => {
+            eprintln!("Could not get the password to log in with - please set the MSB_PASS environment variable");
+            std::process::exit(1);
+        }
+    };
+    let command_prefix = match std::env::var("MSB_PREFIX") {
+        Ok(value) => value,
+        Err(_) => "!self ".to_string()
+    };
 
     /*
 
