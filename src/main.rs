@@ -1,12 +1,14 @@
 // MxSelfBot by 0x1a8510f2
 
+// Include modules
+mod cmds;
+
 // Bring some stuff into the scope
 use url;
 use matrix_sdk::{
     self, async_trait,
     events::{
-        room::message::{MessageEventContent, MessageType, TextMessageEventContent},
-        AnyMessageEventContent, SyncMessageEvent,
+        room::message::{MessageEventContent, MessageType, TextMessageEventContent}, SyncMessageEvent,
     },
     room::Room,
     Client, ClientConfig, EventHandler, SyncSettings,
@@ -127,12 +129,9 @@ impl EventHandler for MxSelfBotEventHandler {
 
             println!("Command from `{}` in room `{}` with contents: {:?}", msg_sender, room.room_id(), cmd);
 
-            if cmd[0] == "ping" {
-                let content = AnyMessageEventContent::RoomMessage(MessageEventContent::text_plain(
-                    "Pong 🏓",
-                ));
-
-                room.send(content, None).await.unwrap();
+            match cmd[0] {
+                "ping" => cmds::ping::handle(cmd, event, &room).await,
+                _ => {}
             }
         }
     }
