@@ -14,10 +14,12 @@ pub trait Command: Send + Sync {
 // Define a list of all available commands - this allows for easily generating help messages while avoiding
 // code duplication.
 mod ping;
+mod info;
 lazy_static::lazy_static! {
     static ref AVAIL_CMDS: std::collections::HashMap<&'static str, Box<dyn Command>> = {
         let mut m = std::collections::HashMap::new();
         m.insert("ping", Box::new(ping::Ping::new()) as Box<dyn Command>);
+        m.insert("info", Box::new(info::Info::new()) as Box<dyn Command>);
         m
     };
 }
