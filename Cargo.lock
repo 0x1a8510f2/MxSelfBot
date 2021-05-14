@@ -907,6 +907,7 @@ dependencies = [
 name = "mxselfbot"
 version = "0.0.0"
 dependencies = [
+ "async-trait",
  "lazy_static",
  "matrix-sdk",
  "signal-hook",

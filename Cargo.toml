@@ -25,3 +25,6 @@ version = "2"
 
 [dependencies.lazy_static]
 version = "1"
+
+[dependencies.async-trait]
+version = "0"

@@ -129,10 +129,7 @@ impl EventHandler for MxSelfBotEventHandler {
 
             println!("Command from `{}` in room `{}` with contents: {:?}", msg_sender, room.room_id(), cmd);
 
-            match cmd[0] {
-                "ping" => cmds::ping::handle(cmd, event, &room).await,
-                _ => {}
-            }
+            cmds::execute(cmd, event, &room).await;
         }
     }
 }
