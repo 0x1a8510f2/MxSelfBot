@@ -774,7 +774,7 @@ checksum = "7ffc5c5338469d4d3ea17d269fa8ea3512ad247247c30bd2df69e68309ed0a08"
 [[package]]
 name = "matrix-sdk"
 version = "0.2.0"
-source = "git+https://github.com/matrix-org/matrix-rust-sdk.git?rev=6b600d7e6db8fb2b8fa28e476b47dae8fb411221#6b600d7e6db8fb2b8fa28e476b47dae8fb411221"
+source = "git+https://github.com/matrix-org/matrix-rust-sdk.git?rev=0bdcc0fbf90286b7555fda48403151f02dde6717#0bdcc0fbf90286b7555fda48403151f02dde6717"
 dependencies = [
  "backoff",
  "bytes",
@@ -798,7 +798,7 @@ dependencies = [
 [[package]]
 name = "matrix-sdk-base"
 version = "0.2.0"
-source = "git+https://github.com/matrix-org/matrix-rust-sdk.git?rev=6b600d7e6db8fb2b8fa28e476b47dae8fb411221#6b600d7e6db8fb2b8fa28e476b47dae8fb411221"
+source = "git+https://github.com/matrix-org/matrix-rust-sdk.git?rev=0bdcc0fbf90286b7555fda48403151f02dde6717#0bdcc0fbf90286b7555fda48403151f02dde6717"
 dependencies = [
  "chacha20poly1305",
  "dashmap",
@@ -821,7 +821,7 @@ dependencies = [
 [[package]]
 name = "matrix-sdk-common"
 version = "0.2.0"
-source = "git+https://github.com/matrix-org/matrix-rust-sdk.git?rev=6b600d7e6db8fb2b8fa28e476b47dae8fb411221#6b600d7e6db8fb2b8fa28e476b47dae8fb411221"
+source = "git+https://github.com/matrix-org/matrix-rust-sdk.git?rev=0bdcc0fbf90286b7555fda48403151f02dde6717#0bdcc0fbf90286b7555fda48403151f02dde6717"
 dependencies = [
  "async-trait",
  "futures",
@@ -837,7 +837,7 @@ dependencies = [
 [[package]]
 name = "matrix-sdk-crypto"
 version = "0.2.0"
-source = "git+https://github.com/matrix-org/matrix-rust-sdk.git?rev=6b600d7e6db8fb2b8fa28e476b47dae8fb411221#6b600d7e6db8fb2b8fa28e476b47dae8fb411221"
+source = "git+https://github.com/matrix-org/matrix-rust-sdk.git?rev=0bdcc0fbf90286b7555fda48403151f02dde6717#0bdcc0fbf90286b7555fda48403151f02dde6717"
 dependencies = [
  "aes-ctr",
  "aes-gcm",
