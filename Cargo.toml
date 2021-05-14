@@ -1,6 +1,8 @@
 [package]
 name = "mxselfbot"
 version = "0.0.0"
+description = "A Matrix bot designed to run behind your own Matrix account providing various helpful commands to enhance your Matrix experience"
+repository = "https://github.com/0x1a8510f2/MxSelfBot"
 authors = ["0x1a8510f2 <admin@0x1a8510f2.space>"]
 edition = "2018"
 
