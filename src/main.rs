@@ -143,7 +143,14 @@ impl EventHandler for MxSelfBotEventHandler {
 
             let result = cmds::execute(cmd, event, &room, &self.bot).await;
             match result {
-                Some(result) => {room.send(result, None).await;},
+                Some(result) => {
+                    // If there is a result to be sent, send it
+                    let send_result = room.send(result, None).await;
+                    match send_result {
+                        Ok() => {},
+                        Err(msg) => eprintln!("Error while sending message: ", msg),
+                    }
+                },
                 None => {},
             }
         }
