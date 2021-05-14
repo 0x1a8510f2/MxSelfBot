@@ -1,43 +1,45 @@
-mod ping;
-
+// All commands which can be executed by this bot must implement this trait
 #[async_trait::async_trait]
 pub trait Command: Send + Sync {
-    fn help(&self, long: bool) -> String;
+    fn help(&self, short: bool) -> String;
     async fn handle(
         &self,
         cmdline: &Vec<&str>,
         event: &matrix_sdk::events::SyncMessageEvent<matrix_sdk::events::room::message::MessageEventContent>,
         room: &matrix_sdk::room::Joined,
-    );
+        bot: &crate::MxSelfBot,
+    ) -> Option<matrix_sdk::events::AnyMessageEventContent>;
 }
 
+// Define a list of all available commands - this allows for easily generating help messages while avoiding
+// code duplication.
+mod ping;
 lazy_static::lazy_static! {
-    static ref COMMANDS: std::collections::HashMap<&'static str, Box<dyn Command>> = {
+    static ref AVAIL_CMDS: std::collections::HashMap<&'static str, Box<dyn Command>> = {
         let mut m = std::collections::HashMap::new();
         m.insert("ping", Box::new(ping::Ping::new()) as Box<dyn Command>);
         m
     };
 }
 
+// Given the commandline, execute the correct command and return its results
 pub async fn execute(
     cmdline: &Vec<&str>,
     event: &matrix_sdk::events::SyncMessageEvent<matrix_sdk::events::room::message::MessageEventContent>,
     room: &matrix_sdk::room::Joined,
-) {
-    if COMMANDS.contains_key(cmdline[0]) {
-        COMMANDS[cmdline[0]].handle(cmdline, event, room).await;
+    bot: &crate::MxSelfBot,
+) -> Option<matrix_sdk::events::AnyMessageEventContent> {
+    if AVAIL_CMDS.contains_key(cmdline[0]) {
+        // If the command exists, run it and return its result
+        return AVAIL_CMDS[cmdline[0]].handle(cmdline, event, room, bot).await
+    } else if cmdline[0] == "help" {
+        // The help command is special since it needs to consider AVAIL_CMDS - hence it is hardcoded here
+        return Option::Some(matrix_sdk::events::AnyMessageEventContent::RoomMessage(matrix_sdk::events::room::message::MessageEventContent::notice_plain(
+            "Soon™",
+        )))
     }
-    /*match cmdline[0] {
-        "ping" => {
-            ping::Ping::new().handle(cmdline, event, room).await;
-        }
-        _ => {
-            // If the command did not match anything above, it's invalid and the user should be alerted of that
-            let content = matrix_sdk::events::AnyMessageEventContent::RoomMessage(matrix_sdk::events::room::message::MessageEventContent::notice_plain(
-                ""
-            ));
-
-            room.send(content, None).await;
-        }
-    }*/
+    // If none of the above matched, the command is not recognised
+    Option::Some(matrix_sdk::events::AnyMessageEventContent::RoomMessage(matrix_sdk::events::room::message::MessageEventContent::notice_plain(
+        format!("The command `{}` was not recognised. Try using the `help [command_name]` command to get a list of available commands or information about a specific command.", cmdline[0]),
+    )))
 }
