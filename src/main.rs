@@ -16,7 +16,10 @@ use matrix_sdk::{
 
 // The bot struct
 #[derive(Clone)]
-struct MxSelfBot {
+pub struct MxSelfBot {
+    version: String,
+    description: String,
+    source: String,
     client: Client,
     username: String,
     password: String,
@@ -33,7 +36,16 @@ impl MxSelfBot {
         let homeserver_url_parsed = url::Url::parse(&homeserver_url)?;
         let client = Client::new_with_config(homeserver_url_parsed, client_config).unwrap();
 
-        Ok(Self { client, username, password, homeserver_url, command_prefix })
+        Ok(Self {
+            version: env!("CARGO_PKG_VERSION").to_string(),
+            description: env!("CARGO_PKG_DESCRIPTION").to_string(),
+            source: env!("CARGO_PKG_REPOSITORY").to_string(),
+            client,
+            username,
+            password,
+            homeserver_url,
+            command_prefix
+        })
     }
 
     // Authenticate with the homeserver using details provided when creating the bot instance
@@ -129,7 +141,11 @@ impl EventHandler for MxSelfBotEventHandler {
 
             println!("Command from `{}` in room `{}` with contents: {:?}", msg_sender, room.room_id(), cmd);
 
-            cmds::execute(cmd, event, &room).await;
+            let result = cmds::execute(cmd, event, &room, &self.bot).await;
+            match result {
+                Some(result) => {room.send(result, None).await;},
+                None => {},
+            }
         }
     }
 }
