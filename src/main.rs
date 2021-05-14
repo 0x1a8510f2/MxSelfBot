@@ -147,8 +147,8 @@ impl EventHandler for MxSelfBotEventHandler {
                     // If there is a result to be sent, send it
                     let send_result = room.send(result, None).await;
                     match send_result {
-                        Ok() => {},
-                        Err(msg) => eprintln!("Error while sending message: ", msg),
+                        Ok(_) => {},
+                        Err(msg) => eprintln!("Error while sending message: {}", msg),
                     }
                 },
                 None => {},
