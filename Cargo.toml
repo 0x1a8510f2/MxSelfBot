@@ -10,7 +10,7 @@ edition = "2018"
 
 [dependencies.matrix-sdk]
 git = "https://github.com/matrix-org/matrix-rust-sdk.git"
-rev = "cd77441d1bf8318ecf4cc9e1886696558ea6ed7b"
+rev = "fe17dce813f500b4c633669a7078ee843bb44886"
 default-features = true
 features = ["encryption", "markdown"]
 
