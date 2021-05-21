@@ -1,0 +1,65 @@
+{
+    "app_name": {
+        "en_GB": "MxSelfBot"
+    },
+
+    "err.conf.unavailable_lang_code": {
+        "en_GB": "The requested language code ($req_code) is not available. Falling back to $fallback_code."
+    },
+    "err.conf.unset_required.homeserver": {
+        "en_GB": "Could not get the URL of the homeserver. Please set the MSB_HS_URL environment variable."
+    },
+    "err.conf.unset_required.user": {
+        "en_GB": "Could not get the username to log in as. Please set the MSB_USER environment variable."
+    },
+    "err.conf.unset_required.pass": {
+        "en_GB": "Could not get the password to log in with. Please set the MSB_PASS environment variable."
+    },
+    "err.conf.invalid.homeserver": {
+        "en_GB": "Failed to parse homeserver URL. The error was: $err"
+    },
+    "err.signal.register.followup": {
+        "en_GB": "Failed to register follow-up signal handler for signal $signal. The error was: $err"
+    },
+    "err.signal.register.initial": {
+        "en_GB": "Failed to register initial signal handler for signal $signal. The error was: $err"
+    },
+    "err.auth.login_fail": {
+        "en_GB": "Failed to authenticate to Matrix server `$hs_url` as `$username`. The error was: $err"
+    },
+    "err.auth.logout_fail": {
+        "en_GB": "Logging out failed. The error was: $err"
+    },
+    "err.auth.logout_tmp_unsupported": {
+        "en_GB": "Automatic logout is currently unsupported. You may need to manually logout the session with ID $device_id."
+    },
+    "err.matrix.event_send": {
+        "en_GB": "Encountered error while sending event. The error was: $err"
+    },
+    "err.sync.crash": {
+        "en_GB": "Sync loop crashed. The error was: $err"
+    },
+
+    "warn.conf.unset.prefix": {
+        "en_GB": "The bot's prefix was not explicitly set so `$default` was used. To remove this warning, set the MSB_PREFIX environment variable."
+    },
+
+    "info.auth.login_success": {
+        "en_GB": "Authenticated to Matrix server `$hs_url` as `$username` and got device ID `$device_id`"
+    },
+    "info.auth.logout_success": {
+        "en_GB": "Logged out"
+    },
+    "info.sync.start": {
+        "en_GB": "Starting sync loop and listening for commands via Matrix"
+    },
+    "info.sync.stop": {
+        "en_GB": "Sync loop exited"
+    },
+    "info.command.recv": {
+        "en_GB": "Received command from $sender in room $room_id with contents: $cmdline"
+    },
+    "info.app.cleanup_start": {
+        "en_GB": "Cleaning up"
+    }
+}
