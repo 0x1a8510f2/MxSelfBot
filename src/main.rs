@@ -212,7 +212,7 @@ async fn main() {
     let command_prefix = match std::env::var("MSB_PREFIX") {
         Ok(value) => value,
         Err(_) => {
-            let default = "!self ";
+            let default = "!s ";
             println!("{}", t!("warn.conf.unset.prefix", default: default, lang));
             default.to_string()
         }
