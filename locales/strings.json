@@ -15,23 +15,17 @@
     "err.conf.unset_required.pass": {
         "en_GB": "Could not get the password to log in with. Please set the MSB_PASS environment variable."
     },
-    "err.conf.invalid.homeserver": {
-        "en_GB": "Failed to parse homeserver URL. The error was: $err"
-    },
     "err.signal.register.followup": {
         "en_GB": "Failed to register follow-up signal handler for signal $signal. The error was: $err"
     },
     "err.signal.register.initial": {
         "en_GB": "Failed to register initial signal handler for signal $signal. The error was: $err"
     },
-    "err.auth.login_fail": {
-        "en_GB": "Failed to authenticate to Matrix server `$hs_url` as `$username`. The error was: $err"
+    "err.auth.connect_fail": {
+        "en_GB": "Failed to connect to Matrix server `$hs_url` as `$username`. The error was: $err"
     },
-    "err.auth.logout_fail": {
-        "en_GB": "Logging out failed. The error was: $err"
-    },
-    "err.auth.logout_tmp_unsupported": {
-        "en_GB": "Automatic logout is currently unsupported. You may need to manually logout the session with ID $device_id."
+    "err.auth.disconnect_fail": {
+        "en_GB": "Failed to end session with ID `$device_id`. The error was: $err"
     },
     "err.matrix.event_send": {
         "en_GB": "Encountered error while sending event. The error was: $err"
@@ -42,6 +36,9 @@
 
     "warn.conf.unset.prefix": {
         "en_GB": "The bot's prefix was not explicitly set so `$default` was used. To remove this warning, set the MSB_PREFIX environment variable."
+    },
+    "warn.auth.disconnect_tmp_unsupported": {
+        "en_GB": "Automatic logout is currently unsupported. You may need to manually logout the session with ID `$device_id`."
     },
 
     "info.auth.login_success": {

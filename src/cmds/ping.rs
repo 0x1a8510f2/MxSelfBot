@@ -12,10 +12,7 @@ impl crate::cmds::Command for Ping {
 
     async fn handle(
         &self,
-        _cmdline: &Vec<&str>,
-        _event: &matrix_sdk::events::SyncMessageEvent<matrix_sdk::events::room::message::MessageEventContent>,
-        _room: &matrix_sdk::room::Joined,
-        _bot: &crate::MxSelfBot,
+        _ctx: crate::cmds::CmdCtx,
     ) -> Option<matrix_sdk::events::AnyMessageEventContent> {
         Option::Some(matrix_sdk::events::AnyMessageEventContent::RoomMessage(matrix_sdk::events::room::message::MessageEventContent::notice_plain(
             "Pong 🏓",

@@ -12,14 +12,11 @@ impl crate::cmds::Command for Info {
 
     async fn handle(
         &self,
-        _cmdline: &Vec<&str>,
-        _event: &matrix_sdk::events::SyncMessageEvent<matrix_sdk::events::room::message::MessageEventContent>,
-        _room: &matrix_sdk::room::Joined,
-        bot: &crate::MxSelfBot,
+        _ctx: crate::cmds::CmdCtx,
     ) -> Option<matrix_sdk::events::AnyMessageEventContent> {
         Option::Some(matrix_sdk::events::AnyMessageEventContent::RoomMessage(matrix_sdk::events::room::message::MessageEventContent::notice_html(
-            format!(" | MxSelfBot v{} | \n{}\n\n Source code URL: {}", bot.version, bot.description, bot.source),
-            format!(" <h1>MxSelfBot v{}</h1><i>{}</i><br/><br/>Source code URL: {}", bot.version, bot.description, bot.source),
+            format!(" | MxSelfBot v{} | \n{}\n\n Source code URL: {}", "bot.version", "bot.description", "bot.source"),
+            format!(" <h1>MxSelfBot v{}</h1><i>{}</i><br/><br/>Source code URL: {}", "bot.version", "bot.description", "bot.source"),
         )))
     }
 }

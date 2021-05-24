@@ -4,11 +4,31 @@ pub trait Command: Send + Sync {
     fn help(&self, short: bool) -> String;
     async fn handle(
         &self,
-        cmdline: &Vec<&str>,
-        event: &matrix_sdk::events::SyncMessageEvent<matrix_sdk::events::room::message::MessageEventContent>,
-        room: &matrix_sdk::room::Joined,
-        bot: &crate::MxSelfBot,
+        ctx: CmdCtx,
     ) -> Option<matrix_sdk::events::AnyMessageEventContent>;
+}
+
+#[derive(Clone)]
+pub struct CmdCtx {
+    pub username: String,
+    pub command_prefix: String,
+    pub cmdline: Vec<String>,
+    pub lang: String,
+}
+impl CmdCtx {
+    pub fn new(
+        username: String,
+        command_prefix: String,
+        cmdline: Vec<String>,
+        lang: String,
+    ) -> Self {
+        Self {
+            username,
+            command_prefix,
+            cmdline,
+            lang,
+        }
+    }
 }
 
 // Define a list of all available commands - this allows for easily generating help messages while avoiding
@@ -26,15 +46,12 @@ lazy_static::lazy_static! {
 
 // Given the commandline, execute the correct command and return its results
 pub async fn execute(
-    cmdline: &Vec<&str>,
-    event: &matrix_sdk::events::SyncMessageEvent<matrix_sdk::events::room::message::MessageEventContent>,
-    room: &matrix_sdk::room::Joined,
-    bot: &crate::MxSelfBot,
+    ctx: CmdCtx,
 ) -> Option<matrix_sdk::events::AnyMessageEventContent> {
-    if AVAIL_CMDS.contains_key(cmdline[0]) {
+    if AVAIL_CMDS.contains_key(&*ctx.cmdline[0]) {
         // If the command exists, run it and return its result
-        return AVAIL_CMDS[cmdline[0]].handle(cmdline, event, room, bot).await
-    } else if cmdline[0] == "help" {
+        return AVAIL_CMDS[&*ctx.cmdline[0]].handle(ctx).await
+    } else if ctx.cmdline[0] == "help" {
         // The help command is special since it needs to consider AVAIL_CMDS - hence it is hardcoded here
         return Option::Some(matrix_sdk::events::AnyMessageEventContent::RoomMessage(matrix_sdk::events::room::message::MessageEventContent::notice_plain(
             "Soon™",
@@ -42,6 +59,6 @@ pub async fn execute(
     }
     // If none of the above matched, the command is not recognised
     Option::Some(matrix_sdk::events::AnyMessageEventContent::RoomMessage(matrix_sdk::events::room::message::MessageEventContent::notice_plain(
-        format!("The command `{}` was not recognised. Try using the `help [command_name]` command to get a list of available commands or information about a specific command.", cmdline[0]),
+        format!("The command `{}` was not recognised. Try using the `help [command_name]` command to get a list of available commands or information about a specific command.", ctx.cmdline[0]),
     )))
 }

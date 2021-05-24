@@ -20,103 +20,71 @@ static AVAIL_LANG: [&'static str; 1] = [
     "en_GB",
 ];
 
-// The bot struct
-#[derive(Clone)]
-pub struct MxSelfBot {
-    version: String,
-    description: String,
-    source: String,
-    client: Client,
-    username: String,
-    password: String,
-    homeserver_url: String,
-    command_prefix: String,
-    lang: String,
+// Authenticate with the homeserver and return an instance of matrix_sdk::Client to manage the connection
+async fn connect(hs_url: &str, username: &str, password: &str, device_name: &str)
+    -> Result<matrix_sdk::Client, Box<dyn std::error::Error>> {
+
+    let client_config = ClientConfig::new();
+    let hs_url_parsed = url::Url::parse(&hs_url)?;
+    let client = Client::new_with_config(hs_url_parsed, client_config)?;
+
+    client.login(&username, &password, None, Some(&device_name)).await?;
+
+    Ok(client)
 }
-impl MxSelfBot {
-    // Create an instance of the bot with the given credentials
-    // Checks the provided homeserver_url and only creates the instance if the URL is valid
-    pub fn new(username: String, password: String, homeserver_url: String, command_prefix: String, lang: String) -> Result<Self, url::ParseError> {
 
-        // Create a client
-        let client_config = ClientConfig::new();
-        let homeserver_url_parsed = url::Url::parse(&homeserver_url)?;
-        let client = Client::new_with_config(homeserver_url_parsed, client_config).unwrap();
+// End session gracefully
+async fn disconnect(_client: &matrix_sdk::Client) -> Result<(), String> {
+    // TODO
+    // Waiting on https://github.com/matrix-org/matrix-rust-sdk/issues/115
 
-        Ok(Self {
-            version: env!("CARGO_PKG_VERSION").to_string(),
-            description: env!("CARGO_PKG_DESCRIPTION").to_string(),
-            source: env!("CARGO_PKG_REPOSITORY").to_string(),
-            client,
-            username,
-            password,
-            homeserver_url,
-            command_prefix,
-            lang,
-        })
-    }
+    /*if self.client.logged_in().await {
+    }*/
+    Ok(())
+}
 
-    // Authenticate with the homeserver using details provided when creating the bot instance
-    pub async fn login(&self) -> Result<matrix_sdk::api::r0::session::login::Response, matrix_sdk::Error> {
+// Run the sync loop and handle events
+async fn run(client: &matrix_sdk::Client, eh: Box<MxSelfBotEventHandler>, kill_loop: std::sync::Arc<std::sync::atomic::AtomicBool>) -> Result<(), matrix_sdk::Error> {
+    // Run an initial sync to set up state and so the bot doesn't respond to old messages
+    client.sync_once(SyncSettings::default()).await.unwrap();
 
-        let login_result = self.client
-            .login(&self.username, &self.password, None, Some(&t!("app_name", self.lang)))
-            .await?;
+    // Add MxSelfBotEventHandler to be notified of incoming messages, we do this after the initial
+    // sync to avoid responding to messages before the bot was running
+    client.set_event_handler(eh).await;
 
-        Ok(login_result)
-    }
+    // Since we called `sync_once` before we entered our sync loop we must pass
+    // that sync token to `sync`
+    let settings = SyncSettings::default().token(client.sync_token().await.unwrap());
 
-    // End session and clean up
-    pub async fn logout(&self) -> Result<(), String> {
-        // Tmp
-        let device_id = self.client.device_id().await;
-        let device_id = match device_id {
-            Some(id) => String::from(id),
-            None => String::from(""),
-        };
-        Err(t!("err.auth.logout_tmp_unsupported", device_id: &device_id, self.lang))
+    // Sync until the exit flag changes
+    client.sync_with_callback(settings, |_| async {
+        if kill_loop.load(std::sync::atomic::Ordering::Relaxed) {
+            matrix_sdk::LoopCtrl::Break
+        } else {
+            matrix_sdk::LoopCtrl::Continue
+        }
+    }).await;
 
-        // TODO
-        /*if self.client.logged_in().await {
-        }*/
-    }
-
-    // Run the sync loop and handle events
-    pub async fn run(&self, kill_loop: std::sync::Arc<std::sync::atomic::AtomicBool>) -> Result<(), matrix_sdk::Error> {
-        // Run an initial sync to set up state and so the bot doesn't respond to old messages
-        self.client.sync_once(SyncSettings::default()).await.unwrap();
-
-        // Add MxSelfBotEventHandler to be notified of incoming messages, we do this after the initial
-        // sync to avoid responding to messages before the bot was running
-        self.client.set_event_handler(Box::new(MxSelfBotEventHandler::new(self.clone()))).await;
-
-        // Since we called `sync_once` before we entered our sync loop we must pass
-        // that sync token to `sync`
-        let settings = SyncSettings::default().token(self.client.sync_token().await.unwrap());
-
-        // Sync until the exit flag changes
-        self.client.sync_with_callback(settings, |_| async {
-            if kill_loop.load(std::sync::atomic::Ordering::Relaxed) {
-                matrix_sdk::LoopCtrl::Break
-            } else {
-                matrix_sdk::LoopCtrl::Continue
-            }
-        }).await;
-
-        Ok(())
-    }
-
+    Ok(())
 }
 
 // The event handler used by MxSelfBot
 struct MxSelfBotEventHandler {
-    bot: MxSelfBot,
+    ctx: cmds::CmdCtx,
 }
-impl MxSelfBotEventHandler {
-    fn new(bot: MxSelfBot) -> Self {
-        Self { bot }
-    }
-}
+impl MxSelfBotEventHandler { fn new(
+    username: String,
+    command_prefix: String,
+    lang: String,
+) -> Self {
+    let ctx = cmds::CmdCtx::new(
+        username,
+        command_prefix,
+        Vec::new(),
+        lang,
+    );
+    Self { ctx }
+} }
 
 // The logic behind MxSelfBotEventHandler
 #[async_trait]
@@ -140,30 +108,40 @@ impl EventHandler for MxSelfBotEventHandler {
             };
 
             // Only ever consider messages sent by our own account and which start with the command prefix
-            if !(*msg_sender == self.bot.username && msg_body.starts_with(&self.bot.command_prefix.to_string())) {
+            if !(*msg_sender == self.ctx.username && msg_body.starts_with(&self.ctx.command_prefix)) {
                 return
             }
 
-            // Remove the prefix and split args
-            let cmd = &msg_body[self.bot.command_prefix.len()..].split(" ").collect::<Vec<&str>>();
-            let cmdstring = cmd.join(" ");
+            // Create a copy of the context with command-specific options filled in
+            let mut tmp_ctx = self.ctx.clone();
+            tmp_ctx.cmdline = msg_body[self.ctx.command_prefix.len()..].split(" ").collect::<Vec<&str>>().iter().map(|s| String::from(*s)).collect();
 
-            println!("{}", t!("info.command.recv", cmdline: &cmdstring, room_id: room.room_id().as_str(), sender: msg_sender.as_str(), self.bot.lang));
+            println!("{}", t!("info.command.recv", cmdline: &tmp_ctx.cmdline.join(" "), room_id: room.room_id().as_str(), sender: msg_sender.as_str(), self.ctx.lang));
 
-            let result = cmds::execute(cmd, event, &room, &self.bot).await;
+            let result = cmds::execute(tmp_ctx).await;
             match result {
                 Some(result) => {
                     // If there is a result to be sent, send it
                     let send_result = room.send(result, None).await;
                     match send_result {
                         Ok(_) => {},
-                        Err(msg) => eprintln!("{}", t!("err.matrix.event_send", err: &msg.to_string(), self.bot.lang)),
+                        Err(msg) => eprintln!("{}", t!("err.matrix.event_send", err: &msg.to_string(), self.ctx.lang)),
                     }
                 },
                 None => {},
             }
         }
     }
+}
+
+lazy_static::lazy_static! {
+    static ref VERSION: String = env!("CARGO_PKG_VERSION").to_string();
+    static ref VERSION_MAJOR: String = env!("CARGO_PKG_VERSION_MAJOR").to_string();
+    static ref VERSION_MINOR: String = env!("CARGO_PKG_VERSION_MINOR").to_string();
+    static ref VERSION_PATCH: String = env!("CARGO_PKG_VERSION_PATCH").to_string();
+    static ref AUTHORS: String = env!("CARGO_PKG_AUTHORS").to_string();
+    static ref DESCRIPTION: String = env!("CARGO_PKG_DESCRIPTION").to_string();
+    static ref REPOSITORY: String = env!("CARGO_PKG_REPOSITORY").to_string();
 }
 
 #[tokio::main]
@@ -220,19 +198,19 @@ async fn main() {
 
     /*
 
-    Set up bot struct
+    Set up client
 
     */
 
-    // Create an instance of the bot
-    let bot = MxSelfBot::new(username, password, homeserver_url, command_prefix, lang.clone());
+    // Connect to and auth with homeserver
+    let connection_result = connect(&homeserver_url, &username, &password, &t!("app_name", lang)).await;
 
-    // Make sure that the bot was created successfuly (homeserver URL was valid)
-    let bot = match bot {
-        Ok(b) => b,
+    // Make sure session creation was successful
+    let client = match connection_result {
+        Ok(c) => c,
         Err(msg) => {
-            eprintln!("{}", t!("err.conf.invalid.homeserver", err: &msg.to_string(), lang));
-            std::process::exit(1)
+            eprintln!("{}", t!("err.auth.connect_fail", err: &msg.to_string(), hs_url: &homeserver_url, username: &username, lang));
+            std::process::exit(1); // TODO: Handle certain errors like timeouts gracefully
         },
     };
 
@@ -269,21 +247,13 @@ async fn main() {
 
     */
 
-    // Authenticate with the homeserver
-    let login_result = bot.login().await;
-
-    // Ensure authentication was successful
-    match login_result {
-        Ok(info) => println!("{}", t!("info.auth.login_success", device_id: info.device_id.as_str(), hs_url: &bot.homeserver_url, username: &bot.username, lang)),
-        Err(msg) => {
-            eprintln!("{}", t!("err.auth.login_fail", err: &msg.to_string(), hs_url: &bot.homeserver_url, username: &bot.username, lang));
-            std::process::exit(1)
-        },
-    }
-
     // Run the bot's sync loop and handle events
     println!("{}", t!("info.sync.start", lang));
-    let run_result = bot.run(std::sync::Arc::clone(&is_exiting)).await;
+    let run_result = run(&client, Box::new(MxSelfBotEventHandler::new(
+        username.clone(),
+        command_prefix.clone(),
+        lang.clone(),
+    )), std::sync::Arc::clone(&is_exiting)).await;
 
     // Detect errors in sync loop after it exits
     match run_result {
@@ -300,12 +270,14 @@ async fn main() {
     println!("{}", t!("info.app.cleanup_start", lang));
 
     // Try logging out to remove unneeded session
-    let logout_result = bot.logout().await;
+    let _disconnect_result = disconnect(&client).await;
 
     // Check if logout was successful
-    match logout_result {
+    /*match disconnect_result {
         Ok(()) => println!("{}", t!("info.auth.logout_success", lang)),
-        Err(msg) => eprintln!("{}", t!("err.auth.logout_fail", err: &msg.to_string(), lang)),
-    }
+        Err(msg) => eprintln!("{}", t!("err.auth.disconnect_fail", err: &msg.to_string(), lang)),
+    }*/
+    let device_id = client.device_id().await.unwrap();
+    println!("{}", t!("warn.auth.disconnect_tmp_unsupported", device_id: &device_id.as_str(), lang))
 
 }
