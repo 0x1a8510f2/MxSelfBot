@@ -1,7 +1,9 @@
 // MxSelfBot by 0x1a8510f2
 
 // Include modules
+mod log;
 mod cmds;
+mod context;
 
 // Bring some stuff into the scope
 use url;
@@ -14,13 +16,14 @@ use matrix_sdk::{
     Client, ClientConfig, EventHandler, SyncSettings,
 };
 use locales::t;
+use log::{Logger, LogLevel};
 
 // Keep track of the available languages to avoid panics
 static AVAIL_LANG: [&'static str; 1] = [
     "en_GB",
 ];
 
-// Authenticate with the homeserver and return an instance of matrix_sdk::Client to manage the connection
+// Authenticate with the homeserver and return an instance of matrix_sdk::Client
 async fn connect(hs_url: &str, username: &str, password: &str, device_name: &str)
     -> Result<matrix_sdk::Client, Box<dyn std::error::Error>> {
 
@@ -33,7 +36,7 @@ async fn connect(hs_url: &str, username: &str, password: &str, device_name: &str
     Ok(client)
 }
 
-// End session gracefully
+// End session with homeserver
 async fn disconnect(_client: &matrix_sdk::Client) -> Result<(), String> {
     // TODO
     // Waiting on https://github.com/matrix-org/matrix-rust-sdk/issues/115
@@ -43,17 +46,16 @@ async fn disconnect(_client: &matrix_sdk::Client) -> Result<(), String> {
     Ok(())
 }
 
-// Run the sync loop and handle events
+// Run the sync loop and handle events until kill_loop is set to false
 async fn run(client: &matrix_sdk::Client, eh: Box<MxSelfBotEventHandler>, kill_loop: std::sync::Arc<std::sync::atomic::AtomicBool>) -> Result<(), matrix_sdk::Error> {
-    // Run an initial sync to set up state and so the bot doesn't respond to old messages
+    // Run an initial sync so the bot doesn't respond to old messages
     client.sync_once(SyncSettings::default()).await.unwrap();
 
-    // Add MxSelfBotEventHandler to be notified of incoming messages, we do this after the initial
-    // sync to avoid responding to messages before the bot was running
+    // Add MxSelfBotEventHandler to be notified of incoming messages such that they can be handled
     client.set_event_handler(eh).await;
 
-    // Since we called `sync_once` before we entered our sync loop we must pass
-    // that sync token to `sync`
+    // Since we called sync_once before entering the sync loop we must pass
+    // that sync token to sync
     let settings = SyncSettings::default().token(client.sync_token().await.unwrap());
 
     // Sync until the exit flag changes
@@ -68,16 +70,14 @@ async fn run(client: &matrix_sdk::Client, eh: Box<MxSelfBotEventHandler>, kill_l
     Ok(())
 }
 
-// The event handler used by MxSelfBot
-struct MxSelfBotEventHandler {
-    ctx: cmds::CmdCtx,
-}
+// The event handler responsible for processing incoming events
+struct MxSelfBotEventHandler { ctx: context::Ctx }
 impl MxSelfBotEventHandler { fn new(
     username: String,
     command_prefix: String,
     lang: String,
 ) -> Self {
-    let ctx = cmds::CmdCtx::new(
+    let ctx = context::Ctx::new(
         username,
         command_prefix,
         Vec::new(),
@@ -89,7 +89,7 @@ impl MxSelfBotEventHandler { fn new(
 // The logic behind MxSelfBotEventHandler
 #[async_trait]
 impl EventHandler for MxSelfBotEventHandler {
-    // Handle message events (commands)
+    // Handle message events (usually commands)
     async fn on_room_message(&self, room: Room, event: &SyncMessageEvent<MessageEventContent>) {
         if let Room::Joined(room) = room {
             let (msg_body, msg_sender) = if let SyncMessageEvent {
@@ -118,7 +118,10 @@ impl EventHandler for MxSelfBotEventHandler {
 
             println!("{}", t!("info.command.recv", cmdline: &tmp_ctx.cmdline.join(" "), room_id: room.room_id().as_str(), sender: msg_sender.as_str(), self.ctx.lang));
 
+            // Pass the newly-created context to the command executor so it can execute the command
             let result = cmds::execute(tmp_ctx).await;
+
+            // Handle the results of the command execution
             match result {
                 Some(result) => {
                     // If there is a result to be sent, send it
@@ -134,6 +137,7 @@ impl EventHandler for MxSelfBotEventHandler {
     }
 }
 
+// Some metadata about the project
 lazy_static::lazy_static! {
     static ref VERSION: String = env!("CARGO_PKG_VERSION").to_string();
     static ref VERSION_MAJOR: String = env!("CARGO_PKG_VERSION_MAJOR").to_string();
@@ -152,6 +156,9 @@ async fn main() {
 
     */
 
+    // Set up logging
+    let logger = Logger::new();
+
     // Get info from environment variables
     let lang = match std::env::var("MSB_LANG") {
         Ok(value) => {
@@ -160,7 +167,7 @@ async fn main() {
             if AVAIL_LANG.contains(&&*value) { value }
             else {
                 let lang = AVAIL_LANG[0];
-                eprintln!("{}", t!("err.conf.unavailable_lang_code", fallback_code: lang, req_code: &value, lang));
+                logger.log(LogLevel::Warn, t!("err.conf.unavailable_lang_code", fallback_code: lang, req_code: &value, lang));
                 lang.to_string()
             }
         },
@@ -169,21 +176,21 @@ async fn main() {
     let homeserver_url = match std::env::var("MSB_HS_URL") {
         Ok(value) => value,
         Err(_) => {
-            eprintln!("{}", t!("err.conf.unset_required.homeserver", lang));
+            logger.log(LogLevel::Error, t!("err.conf.unset_required.homeserver", lang));
             std::process::exit(1);
         }
     };
     let username = match std::env::var("MSB_USER") {
         Ok(value) => value,
         Err(_) => {
-            eprintln!("{}", t!("err.conf.unset_required.user", lang));
+            logger.log(LogLevel::Error, t!("err.conf.unset_required.user", lang));
             std::process::exit(1);
         }
     };
     let password = match std::env::var("MSB_PASS") {
         Ok(value) => value,
         Err(_) => {
-            eprintln!("{}", t!("err.conf.unset_required.pass", lang));
+            logger.log(LogLevel::Error, t!("err.conf.unset_required.pass", lang));
             std::process::exit(1);
         }
     };
@@ -191,7 +198,7 @@ async fn main() {
         Ok(value) => value,
         Err(_) => {
             let default = "!s ";
-            println!("{}", t!("warn.conf.unset.prefix", default: default, lang));
+            logger.log(LogLevel::Warn, t!("warn.conf.unset.prefix", default: default, lang));
             default.to_string()
         }
     };
@@ -209,7 +216,7 @@ async fn main() {
     let client = match connection_result {
         Ok(c) => c,
         Err(msg) => {
-            eprintln!("{}", t!("err.auth.connect_fail", err: &msg.to_string(), hs_url: &homeserver_url, username: &username, lang));
+            logger.log(LogLevel::Error, t!("err.auth.connect_fail", err: &msg.to_string(), hs_url: &homeserver_url, username: &username, lang));
             std::process::exit(1); // TODO: Handle certain errors like timeouts gracefully
         },
     };
@@ -230,14 +237,14 @@ async fn main() {
         let followup_sig_reg_result = signal_hook::flag::register_conditional_shutdown(*signal, 1, std::sync::Arc::clone(&is_exiting));
         match followup_sig_reg_result {
             Ok(_) => {},
-            Err(msg) => eprintln!("{}", t!("err.signal.register.followup", err: &msg.to_string(), signal: &signal.to_string(), lang)),
+            Err(msg) => logger.log(LogLevel::Error, t!("err.signal.register.followup", err: &msg.to_string(), signal: &signal.to_string(), lang)),
         }
         // When the first signal is received, prepare the above by setting is_exiting to true
         // This also triggers a cleanup process
         let initial_sig_reg_result = signal_hook::flag::register(*signal, std::sync::Arc::clone(&is_exiting));
         match initial_sig_reg_result {
             Ok(_) => {},
-            Err(msg) => eprintln!("{}", t!("err.signal.register.initial", err: &msg.to_string(), signal: &signal.to_string(), lang)),
+            Err(msg) => logger.log(LogLevel::Error, t!("err.signal.register.initial", err: &msg.to_string(), signal: &signal.to_string(), lang)),
         }
     }
 
@@ -248,7 +255,7 @@ async fn main() {
     */
 
     // Run the bot's sync loop and handle events
-    println!("{}", t!("info.sync.start", lang));
+    logger.log(LogLevel::Info, t!("info.sync.start", lang));
     let run_result = run(&client, Box::new(MxSelfBotEventHandler::new(
         username.clone(),
         command_prefix.clone(),
@@ -257,8 +264,8 @@ async fn main() {
 
     // Detect errors in sync loop after it exits
     match run_result {
-        Ok(_) => println!("{}", t!("info.sync.stop", lang)),
-        Err(msg) => eprintln!("{}", t!("err.sync.crash", err: &msg.to_string(), lang)),
+        Ok(_) => logger.log(LogLevel::Info, t!("info.sync.stop", lang)),
+        Err(msg) => logger.log(LogLevel::Error, t!("err.sync.crash", err: &msg.to_string(), lang)),
     }
 
     /*
@@ -267,17 +274,17 @@ async fn main() {
 
     */
 
-    println!("{}", t!("info.app.cleanup_start", lang));
+    logger.log(LogLevel::Info, t!("info.app.cleanup_start", lang));
 
     // Try logging out to remove unneeded session
     let _disconnect_result = disconnect(&client).await;
 
     // Check if logout was successful
     /*match disconnect_result {
-        Ok(()) => println!("{}", t!("info.auth.logout_success", lang)),
-        Err(msg) => eprintln!("{}", t!("err.auth.disconnect_fail", err: &msg.to_string(), lang)),
+        Ok(()) => logger.log(LogLevel::Info, t!("info.auth.logout_success", lang)),
+        Err(msg) => logger.log(LogLevel::Error, t!("err.auth.disconnect_fail", err: &msg.to_string(), lang)),
     }*/
     let device_id = client.device_id().await.unwrap();
-    println!("{}", t!("warn.auth.disconnect_tmp_unsupported", device_id: &device_id.as_str(), lang))
+    logger.log(LogLevel::Warn, t!("warn.auth.disconnect_tmp_unsupported", device_id: &device_id.as_str(), lang))
 
 }

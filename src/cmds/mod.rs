@@ -4,31 +4,8 @@ pub trait Command: Send + Sync {
     fn help(&self, short: bool) -> String;
     async fn handle(
         &self,
-        ctx: CmdCtx,
+        ctx: crate::context::Ctx,
     ) -> Option<matrix_sdk::events::AnyMessageEventContent>;
-}
-
-#[derive(Clone)]
-pub struct CmdCtx {
-    pub username: String,
-    pub command_prefix: String,
-    pub cmdline: Vec<String>,
-    pub lang: String,
-}
-impl CmdCtx {
-    pub fn new(
-        username: String,
-        command_prefix: String,
-        cmdline: Vec<String>,
-        lang: String,
-    ) -> Self {
-        Self {
-            username,
-            command_prefix,
-            cmdline,
-            lang,
-        }
-    }
 }
 
 // Define a list of all available commands - this allows for easily generating help messages while avoiding
@@ -46,7 +23,7 @@ lazy_static::lazy_static! {
 
 // Given the commandline, execute the correct command and return its results
 pub async fn execute(
-    ctx: CmdCtx,
+    ctx: crate::context::Ctx,
 ) -> Option<matrix_sdk::events::AnyMessageEventContent> {
     if AVAIL_CMDS.contains_key(&*ctx.cmdline[0]) {
         // If the command exists, run it and return its result

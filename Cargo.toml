@@ -33,3 +33,6 @@ version = "0"
 
 [dependencies.locales]
 version = "0"
+
+[dependencies]
+chrono = "0"

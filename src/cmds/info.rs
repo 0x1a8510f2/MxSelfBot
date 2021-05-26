@@ -12,7 +12,7 @@ impl crate::cmds::Command for Info {
 
     async fn handle(
         &self,
-        _ctx: crate::cmds::CmdCtx,
+        _ctx: crate::context::Ctx,
     ) -> Option<matrix_sdk::events::AnyMessageEventContent> {
         Option::Some(matrix_sdk::events::AnyMessageEventContent::RoomMessage(matrix_sdk::events::room::message::MessageEventContent::notice_html(
             format!(" | MxSelfBot v{} | \n{}\n\n Source code URL: {}", "bot.version", "bot.description", "bot.source"),
