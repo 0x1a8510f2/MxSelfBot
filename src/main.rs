@@ -4,17 +4,9 @@
 mod log;
 mod cmds;
 mod context;
+mod mxclient;
 
 // Bring some stuff into the scope
-use url;
-use matrix_sdk::{
-    self, async_trait,
-    events::{
-        room::message::{MessageEventContent, MessageType, TextMessageEventContent}, SyncMessageEvent,
-    },
-    room::Room,
-    Client, ClientConfig, EventHandler, SyncSettings,
-};
 use locales::t;
 use log::{Logger, LogLevel};
 
@@ -22,120 +14,6 @@ use log::{Logger, LogLevel};
 static AVAIL_LANG: [&'static str; 1] = [
     "en_GB",
 ];
-
-// Authenticate with the homeserver and return an instance of matrix_sdk::Client
-async fn connect(hs_url: &str, username: &str, password: &str, device_name: &str)
-    -> Result<matrix_sdk::Client, Box<dyn std::error::Error>> {
-
-    let client_config = ClientConfig::new();
-    let hs_url_parsed = url::Url::parse(&hs_url)?;
-    let client = Client::new_with_config(hs_url_parsed, client_config)?;
-
-    client.login(&username, &password, None, Some(&device_name)).await?;
-
-    Ok(client)
-}
-
-// End session with homeserver
-async fn disconnect(_client: &matrix_sdk::Client) -> Result<(), String> {
-    // TODO
-    // Waiting on https://github.com/matrix-org/matrix-rust-sdk/issues/115
-
-    /*if self.client.logged_in().await {
-    }*/
-    Ok(())
-}
-
-// Run the sync loop and handle events until kill_loop is set to false
-async fn run(client: &matrix_sdk::Client, eh: Box<MxSelfBotEventHandler>, kill_loop: std::sync::Arc<std::sync::atomic::AtomicBool>) -> Result<(), matrix_sdk::Error> {
-    // Run an initial sync so the bot doesn't respond to old messages
-    client.sync_once(SyncSettings::default()).await.unwrap();
-
-    // Add MxSelfBotEventHandler to be notified of incoming messages such that they can be handled
-    client.set_event_handler(eh).await;
-
-    // Since we called sync_once before entering the sync loop we must pass
-    // that sync token to sync
-    let settings = SyncSettings::default().token(client.sync_token().await.unwrap());
-
-    // Sync until the exit flag changes
-    client.sync_with_callback(settings, |_| async {
-        if kill_loop.load(std::sync::atomic::Ordering::Relaxed) {
-            matrix_sdk::LoopCtrl::Break
-        } else {
-            matrix_sdk::LoopCtrl::Continue
-        }
-    }).await;
-
-    Ok(())
-}
-
-// The event handler responsible for processing incoming events
-struct MxSelfBotEventHandler { ctx: context::Ctx }
-impl MxSelfBotEventHandler { fn new(
-    username: String,
-    command_prefix: String,
-    lang: String,
-) -> Self {
-    let ctx = context::Ctx::new(
-        username,
-        command_prefix,
-        Vec::new(),
-        lang,
-    );
-    Self { ctx }
-} }
-
-// The logic behind MxSelfBotEventHandler
-#[async_trait]
-impl EventHandler for MxSelfBotEventHandler {
-    // Handle message events (usually commands)
-    async fn on_room_message(&self, room: Room, event: &SyncMessageEvent<MessageEventContent>) {
-        if let Room::Joined(room) = room {
-            let (msg_body, msg_sender) = if let SyncMessageEvent {
-                sender: msg_sender,
-                content:
-                    MessageEventContent {
-                        msgtype: MessageType::Text(TextMessageEventContent { body: msg_body, .. }),
-                        ..
-                    },
-                ..
-            } = event
-            {
-                (msg_body, msg_sender)
-            } else {
-                return;
-            };
-
-            // Only ever consider messages sent by our own account and which start with the command prefix
-            if !(*msg_sender == self.ctx.username && msg_body.starts_with(&self.ctx.command_prefix)) {
-                return
-            }
-
-            // Create a copy of the context with command-specific options filled in
-            let mut tmp_ctx = self.ctx.clone();
-            tmp_ctx.cmdline = msg_body[self.ctx.command_prefix.len()..].split(" ").collect::<Vec<&str>>().iter().map(|s| String::from(*s)).collect();
-
-            println!("{}", t!("info.command.recv", cmdline: &tmp_ctx.cmdline.join(" "), room_id: room.room_id().as_str(), sender: msg_sender.as_str(), self.ctx.lang));
-
-            // Pass the newly-created context to the command executor so it can execute the command
-            let result = cmds::execute(tmp_ctx).await;
-
-            // Handle the results of the command execution
-            match result {
-                Some(result) => {
-                    // If there is a result to be sent, send it
-                    let send_result = room.send(result, None).await;
-                    match send_result {
-                        Ok(_) => {},
-                        Err(msg) => eprintln!("{}", t!("err.matrix.event_send", err: &msg.to_string(), self.ctx.lang)),
-                    }
-                },
-                None => {},
-            }
-        }
-    }
-}
 
 // Some metadata about the project
 lazy_static::lazy_static! {
@@ -148,6 +26,7 @@ lazy_static::lazy_static! {
     static ref REPOSITORY: String = env!("CARGO_PKG_REPOSITORY").to_string();
 }
 
+// The important stuff
 #[tokio::main]
 async fn main() {
     /*
@@ -159,7 +38,7 @@ async fn main() {
     // Set up logging
     let logger = Logger::new();
 
-    // Get info from environment variables
+    // Get info/config from environment variables
     let lang = match std::env::var("MSB_LANG") {
         Ok(value) => {
             // If the specified language code is invalid, fall back to the first available
@@ -210,7 +89,8 @@ async fn main() {
     */
 
     // Connect to and auth with homeserver
-    let connection_result = connect(&homeserver_url, &username, &password, &t!("app_name", lang)).await;
+    // Use the app name as the session name
+    let connection_result = mxclient::connect(&homeserver_url, &username, &password, &t!("app_name", lang)).await;
 
     // Make sure session creation was successful
     let client = match connection_result {
@@ -223,7 +103,7 @@ async fn main() {
 
     /*
 
-    Set up clean exit
+    Set up clean exit in case of received signal
 
     */
 
@@ -256,10 +136,11 @@ async fn main() {
 
     // Run the bot's sync loop and handle events
     logger.log(LogLevel::Info, t!("info.sync.start", lang));
-    let run_result = run(&client, Box::new(MxSelfBotEventHandler::new(
+    let run_result = mxclient::run(&client, Box::new(mxclient::MxSelfBotEventHandler::new(
         username.clone(),
         command_prefix.clone(),
         lang.clone(),
+        logger,
     )), std::sync::Arc::clone(&is_exiting)).await;
 
     // Detect errors in sync loop after it exits
@@ -277,13 +158,14 @@ async fn main() {
     logger.log(LogLevel::Info, t!("info.app.cleanup_start", lang));
 
     // Try logging out to remove unneeded session
-    let _disconnect_result = disconnect(&client).await;
+    let _disconnect_result = mxclient::disconnect(&client).await;
 
     // Check if logout was successful
     /*match disconnect_result {
         Ok(()) => logger.log(LogLevel::Info, t!("info.auth.logout_success", lang)),
         Err(msg) => logger.log(LogLevel::Error, t!("err.auth.disconnect_fail", err: &msg.to_string(), lang)),
     }*/
+
     let device_id = client.device_id().await.unwrap();
     logger.log(LogLevel::Warn, t!("warn.auth.disconnect_tmp_unsupported", device_id: &device_id.as_str(), lang))
 

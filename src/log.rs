@@ -10,6 +10,7 @@ impl std::fmt::Display for LogLevel {
     }
 }
 
+#[derive(Clone, Copy)]
 pub struct Logger {}
 impl Logger {
     pub fn new() -> Self {
