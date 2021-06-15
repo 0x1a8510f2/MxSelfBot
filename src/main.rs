@@ -21,13 +21,17 @@ static AVAIL_LANG: [&'static str; 1] = [
 
 // Some metadata about the project
 lazy_static::lazy_static! {
-    static ref VERSION: String = env!("CARGO_PKG_VERSION").to_string();
-    static ref VERSION_MAJOR: String = env!("CARGO_PKG_VERSION_MAJOR").to_string();
-    static ref VERSION_MINOR: String = env!("CARGO_PKG_VERSION_MINOR").to_string();
-    static ref VERSION_PATCH: String = env!("CARGO_PKG_VERSION_PATCH").to_string();
-    static ref AUTHORS: String = env!("CARGO_PKG_AUTHORS").to_string();
-    static ref DESCRIPTION: String = env!("CARGO_PKG_DESCRIPTION").to_string();
-    static ref REPOSITORY: String = env!("CARGO_PKG_REPOSITORY").to_string();
+    static ref META: std::collections::HashMap<&'static str, &'static str> = {
+        let mut m = std::collections::HashMap::new();
+        m.insert("VERSION", env!("CARGO_PKG_VERSION"));
+        m.insert("VERSION_MAJOR", env!("CARGO_PKG_VERSION_MAJOR"));
+        m.insert("VERSION_MINOR", env!("CARGO_PKG_VERSION_MINOR"));
+        m.insert("VERSION_PATCH", env!("CARGO_PKG_VERSION_PATCH"));
+        m.insert("AUTHORS", env!("CARGO_PKG_AUTHORS"));
+        m.insert("DESCRIPTION", env!("CARGO_PKG_DESCRIPTION"));
+        m.insert("REPOSITORY", env!("CARGO_PKG_REPOSITORY"));
+        m
+    };
 }
 
 // The important stuff
@@ -141,6 +145,7 @@ async fn main() {
     // Run the bot's sync loop and handle events
     logger.log(LogLevel::Info, t!("info.sync.start", lang));
     let run_result = mxclient::run(&client, Box::new(mxclient::MxSelfBotEventHandler::new(
+        META.clone(),
         username.clone(),
         command_prefix.clone(),
         lang.clone(),

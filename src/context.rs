@@ -9,6 +9,7 @@ successfully execute the command
 
 #[derive(Clone)]
 pub struct Ctx {
+    pub info: std::collections::HashMap<&'static str, &'static str>,
     pub username: String,
     pub command_prefix: String,
     pub cmdline: Vec<String>,
@@ -17,6 +18,7 @@ pub struct Ctx {
 }
 impl Ctx {
     pub fn new(
+        info: std::collections::HashMap<&'static str, &'static str>,
         username: String,
         command_prefix: String,
         cmdline: Vec<String>,
@@ -24,6 +26,7 @@ impl Ctx {
         logger: crate::Logger,
     ) -> Self {
         Self {
+            info,
             username,
             command_prefix,
             cmdline,

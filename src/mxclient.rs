@@ -71,12 +71,14 @@ pub async fn run(client: &matrix_sdk::Client, eh: Box<MxSelfBotEventHandler>, ki
 // The event handler responsible for processing incoming events
 pub struct MxSelfBotEventHandler { ctx: crate::context::Ctx }
 impl MxSelfBotEventHandler { pub fn new(
+    info: std::collections::HashMap<&'static str, &'static str>,
     username: String,
     command_prefix: String,
     lang: String,
     logger: crate::Logger,
 ) -> Self {
     let ctx = crate::context::Ctx::new(
+        info,
         username,
         command_prefix,
         Vec::new(),
