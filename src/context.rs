@@ -1,3 +1,12 @@
+/*
+
+MxSelfBot by 0x1a8510f2
+
+A context passed to each command which should contain all the data required to
+successfully execute the command
+
+*/
+
 #[derive(Clone)]
 pub struct Ctx {
     pub username: String,

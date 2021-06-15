@@ -1,3 +1,5 @@
+// Check if the bot is online
+
 pub struct Ping {}
 impl Ping { pub const fn new() -> Self { Self {} } }
 

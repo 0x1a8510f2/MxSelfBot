@@ -1,3 +1,11 @@
+/*
+
+MxSelfBot by 0x1a8510f2
+
+Module for keeping track of and invoking individual commands that can be executed
+
+*/
+
 // All commands which can be executed by this bot must implement this trait
 #[async_trait::async_trait]
 pub trait Command: Send + Sync {
@@ -21,7 +29,7 @@ lazy_static::lazy_static! {
     };
 }
 
-// Given the commandline, execute the correct command and return its results
+// Given the commandline (within context), execute the correct command and return its results
 pub async fn execute(
     ctx: crate::context::Ctx,
 ) -> Option<matrix_sdk::events::AnyMessageEventContent> {

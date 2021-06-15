@@ -1,3 +1,11 @@
+/*
+
+MxSelfBot by 0x1a8510f2
+
+Module to help with logging events
+
+*/
+
 #[derive(Debug)]
 pub enum LogLevel {
     Info,

@@ -1,3 +1,5 @@
+// Show information about the bot
+
 pub struct Info {}
 impl Info { pub const fn new() -> Self { Self {} } }
 

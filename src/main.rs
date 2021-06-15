@@ -1,4 +1,8 @@
-// MxSelfBot by 0x1a8510f2
+/*
+
+MxSelfBot by 0x1a8510f2
+
+*/
 
 // Include modules
 mod log;

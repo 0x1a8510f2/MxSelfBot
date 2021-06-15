@@ -1,3 +1,11 @@
+/*
+
+MxSelfBot by 0x1a8510f2
+
+Functions helping with interactions with the Matrix network
+
+*/
+
 // Bring some stuff into the scope
 use crate::log::LogLevel;
 use crate::cmds;
@@ -5,7 +13,8 @@ use url;
 use matrix_sdk::{
     self, async_trait,
     events::{
-        room::message::{MessageEventContent, MessageType, TextMessageEventContent}, SyncMessageEvent,
+        room::message::{MessageEventContent, MessageType, TextMessageEventContent},
+        SyncMessageEvent,
     },
     room::Room,
     Client, ClientConfig, EventHandler, SyncSettings,
@@ -93,11 +102,8 @@ impl EventHandler for MxSelfBotEventHandler {
                     },
                 ..
             } = event
-            {
-                (msg_body, msg_sender)
-            } else {
-                return;
-            };
+            { (msg_body, msg_sender) }
+            else { return; };
 
             // Only ever consider messages sent by our own account and which start with the command prefix
             if !(*msg_sender == self.ctx.username && msg_body.starts_with(&self.ctx.command_prefix)) { return }
