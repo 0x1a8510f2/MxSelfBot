@@ -81,9 +81,11 @@ impl MxSelfBotEventHandler { pub fn new(
         info,
         username,
         command_prefix,
-        Vec::new(),
         lang,
         logger,
+        Vec::new(),
+        None,
+        String::new(),
     );
     Self { ctx }
 } }
@@ -91,7 +93,7 @@ impl MxSelfBotEventHandler { pub fn new(
 // The logic behind MxSelfBotEventHandler
 #[async_trait]
 impl EventHandler for MxSelfBotEventHandler {
-    // Handle message events (usually commands)
+    // Handle message events in any room the user is in
     async fn on_room_message(&self, room: Room, event: &SyncMessageEvent<MessageEventContent>) {
         if let Room::Joined(room) = room {
             // Extract needed data from the received event
@@ -107,31 +109,26 @@ impl EventHandler for MxSelfBotEventHandler {
             { (msg_body, msg_sender) }
             else { return; };
 
-            // Only ever consider messages sent by our own account and which start with the command prefix
-            if !(*msg_sender == self.ctx.username && msg_body.starts_with(&self.ctx.command_prefix)) { return }
+            // Only process messages as commands if they start with the prefix and *are sent by our account* (very important)
+            if msg_body.starts_with(&self.ctx.command_prefix) && msg_sender.to_string() == self.ctx.username {
+                // Create a copy of the context with command-specific options filled in
+                let mut tmp_ctx = self.ctx.clone();
+                // This removes the command prefix, then splits the remaining string by spaces and converts the result into a Vec<String>
+                tmp_ctx.cmdline = msg_body[self.ctx.command_prefix.len()..].split(" ").collect::<Vec<&str>>().iter().map(|s| String::from(*s)).collect();
+                tmp_ctx.room = Some(room.clone());
+                tmp_ctx.sender = msg_sender.to_string();
 
-            // Create a copy of the context with command-specific options filled in
-            let mut tmp_ctx = self.ctx.clone();
-            // This removes the command prefix, then splits the remaining string by spaces and converts the result into a Vec<String>
-            tmp_ctx.cmdline = msg_body[self.ctx.command_prefix.len()..].split(" ").collect::<Vec<&str>>().iter().map(|s| String::from(*s)).collect();
+                tmp_ctx.logger.log(LogLevel::Info,
+                    t!("info.command.recv", cmdline: &tmp_ctx.cmdline.join(" "), room_id: room.room_id().as_str(), sender: msg_sender.as_str(), tmp_ctx.lang));
 
-            tmp_ctx.logger.log(LogLevel::Info,
-                t!("info.command.recv", cmdline: &tmp_ctx.cmdline.join(" "), room_id: room.room_id().as_str(), sender: msg_sender.as_str(), tmp_ctx.lang));
+                // Execute the command with the newly-created context
+                cmds::execute(tmp_ctx).await;
 
-            // Pass the newly-created context to the command executor so it can execute the command
-            let result = cmds::execute(tmp_ctx).await;
+            // If the event was not processed as a command, we may still need to consider it (autoreply, for instance)
+            } else {
 
-            // Handle the results of the command execution
-            match result {
-                Some(result) => {
-                    // If there is a result to be sent, send it
-                    let send_result = room.send(result, None).await;
-                    match send_result {
-                        Ok(_) => {},
-                        Err(msg) => self.ctx.logger.log(LogLevel::Error, t!("err.matrix.event_send", err: &msg.to_string(), self.ctx.lang)),
-                    }
-                },
-                None => {},
+                // TODO
+
             }
         }
     }

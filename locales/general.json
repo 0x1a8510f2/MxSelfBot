@@ -30,6 +30,9 @@
     "err.matrix.event_send": {
         "en_GB": "Encountered error while sending event. The error was: $err"
     },
+    "err.cmd.unknown_cmd": {
+        "en_GB": "The command `$cmd` was not recognised. Try using the `help [command_name]` command to get a list of available commands or information about a specific command."
+    },
     "err.sync.crash": {
         "en_GB": "Sync loop crashed. The error was: $err"
     },

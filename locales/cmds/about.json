@@ -1,0 +1,8 @@
+{
+    "cmd.about.plain_response": {
+        "en_GB": " | MxSelfBot v$version | \n$description\n\n Source code URL: $source"
+    },
+    "cmd.about.html_response": {
+        "en_GB": " <h1>MxSelfBot v$version</h1><i>$description</i><br/><br/>Source code URL: $source"
+    }
+}
