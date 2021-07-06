@@ -16,16 +16,17 @@ impl crate::cmds::Command for About {
 
     async fn handle(
         &self,
-        ctx: crate::context::Ctx,
+        gctx: crate::context::GlobalCtx,
+        ectx: crate::context::EventCtx,
     ) {
-        let result = ctx.room.unwrap().send(matrix_sdk::ruma::events::AnyMessageEventContent::RoomMessage(matrix_sdk::ruma::events::room::message::MessageEventContent::notice_html(
-            t!("cmd.about.plain_response", description: ctx.info["DESCRIPTION"], source: ctx.info["REPOSITORY"], version: ctx.info["VERSION"], ctx.lang),
-            t!("cmd.about.html_response", description: ctx.info["DESCRIPTION"], source: ctx.info["REPOSITORY"], version: ctx.info["VERSION"], ctx.lang),
+        let result = ectx.room.send(matrix_sdk::ruma::events::AnyMessageEventContent::RoomMessage(matrix_sdk::ruma::events::room::message::MessageEventContent::notice_html(
+            t!("cmd.about.plain_response", description: gctx.info["DESCRIPTION"], source: gctx.info["REPOSITORY"], version: gctx.info["VERSION"], gctx.lang),
+            t!("cmd.about.html_response", description: gctx.info["DESCRIPTION"], source: gctx.info["REPOSITORY"], version: gctx.info["VERSION"], gctx.lang),
         )), None).await;
 
         match result {
             Ok(_) => {},
-            Err(msg) => ctx.logger.log(crate::log::LogLevel::Error, t!("err.matrix.event_send", err: &msg.to_string(), ctx.lang)),
+            Err(msg) => gctx.logger.log(crate::log::LogLevel::Error, t!("err.matrix.event_send", err: &msg.to_string(), gctx.lang)),
         }
     }
 }

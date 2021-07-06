@@ -69,25 +69,9 @@ pub async fn run(client: &matrix_sdk::Client, eh: Box<MxSelfBotEventHandler>, ki
 }
 
 // The event handler responsible for processing incoming events
-pub struct MxSelfBotEventHandler { ctx: crate::context::Ctx }
-impl MxSelfBotEventHandler { pub fn new(
-    info: std::collections::HashMap<&'static str, &'static str>,
-    username: String,
-    command_prefix: String,
-    lang: String,
-    logger: crate::Logger,
-) -> Self {
-    let ctx = crate::context::Ctx::new(
-        info,
-        username,
-        command_prefix,
-        lang,
-        logger,
-        Vec::new(),
-        None,
-        String::new(),
-    );
-    Self { ctx }
+pub struct MxSelfBotEventHandler { gctx: crate::context::GlobalCtx }
+impl MxSelfBotEventHandler { pub fn new( gctx: crate::context::GlobalCtx ) -> Self {
+    Self { gctx }
 } }
 
 // The logic behind MxSelfBotEventHandler
@@ -110,19 +94,19 @@ impl EventHandler for MxSelfBotEventHandler {
             else { return; };
 
             // Only process messages as commands if they start with the prefix and *are sent by our account* (very important)
-            if msg_body.starts_with(&self.ctx.command_prefix) && msg_sender.to_string() == self.ctx.username {
-                // Create a copy of the context with command-specific options filled in
-                let mut tmp_ctx = self.ctx.clone();
-                // This removes the command prefix, then splits the remaining string by spaces and converts the result into a Vec<String>
-                tmp_ctx.cmdline = msg_body[self.ctx.command_prefix.len()..].split(" ").collect::<Vec<&str>>().iter().map(|s| String::from(*s)).collect();
-                tmp_ctx.room = Some(room.clone());
-                tmp_ctx.sender = msg_sender.to_string();
+            if msg_body.starts_with(&self.gctx.command_prefix) && msg_sender.to_string() == self.gctx.username {
+                // Create an event context to store event-specific properties
+                let ectx = crate::context::EventCtx::new(
+                    msg_body.to_string(),
+                    msg_sender.to_string(),
+                    room.clone(),
+                );
 
-                tmp_ctx.logger.log(LogLevel::Info,
-                    t!("info.command.recv", cmdline: &tmp_ctx.cmdline.join(" "), room_id: room.room_id().as_str(), sender: msg_sender.as_str(), tmp_ctx.lang));
+                self.gctx.logger.log(LogLevel::Info,
+                    t!("info.command.recv", cmdline: &msg_body[self.gctx.command_prefix.len()..], room_id: room.room_id().as_str(), sender: msg_sender.as_str(), self.gctx.lang));
 
                 // Execute the command with the newly-created context
-                cmds::execute(tmp_ctx).await;
+                cmds::execute(self.gctx.clone(), ectx).await;
 
             // If the event was not processed as a command, we may still need to consider it (autoreply, for instance)
             } else {

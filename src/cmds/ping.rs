@@ -19,15 +19,16 @@ impl crate::cmds::Command for Ping {
 
     async fn handle(
         &self,
-        ctx: crate::context::Ctx,
+        gctx: crate::context::GlobalCtx,
+        ectx: crate::context::EventCtx,
     ) {
-        let result = ctx.room.unwrap().send(matrix_sdk::ruma::events::AnyMessageEventContent::RoomMessage(matrix_sdk::ruma::events::room::message::MessageEventContent::notice_plain(
+        let result = ectx.room.send(matrix_sdk::ruma::events::AnyMessageEventContent::RoomMessage(matrix_sdk::ruma::events::room::message::MessageEventContent::notice_plain(
             "Pong 🏓",
         )), None).await;
 
         match result {
             Ok(_) => {},
-            Err(msg) => ctx.logger.log(crate::log::LogLevel::Error, t!("err.matrix.event_send", err: &msg.to_string(), ctx.lang)),
+            Err(msg) => gctx.logger.log(crate::log::LogLevel::Error, t!("err.matrix.event_send", err: &msg.to_string(), gctx.lang)),
         }
     }
 }
