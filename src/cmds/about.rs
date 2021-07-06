@@ -7,10 +7,10 @@ impl About { pub const fn new() -> Self { Self {} } }
 
 #[async_trait::async_trait]
 impl crate::cmds::Command for About {
-    fn help(&self, short: bool) -> String {
+    fn help(&self, short: bool) -> [String; 2] {
         match short {
-            true => "".to_string(),
-            false => "".to_string(),
+            true => ["".to_string(), "".to_string()],
+            false => ["".to_string(), "".to_string()],
         }
     }
 
@@ -18,7 +18,7 @@ impl crate::cmds::Command for About {
         &self,
         ctx: crate::context::Ctx,
     ) {
-        let result = ctx.room.unwrap().send(matrix_sdk::events::AnyMessageEventContent::RoomMessage(matrix_sdk::events::room::message::MessageEventContent::notice_html(
+        let result = ctx.room.unwrap().send(matrix_sdk::ruma::events::AnyMessageEventContent::RoomMessage(matrix_sdk::ruma::events::room::message::MessageEventContent::notice_html(
             t!("cmd.about.plain_response", description: ctx.info["DESCRIPTION"], source: ctx.info["REPOSITORY"], version: ctx.info["VERSION"], ctx.lang),
             t!("cmd.about.html_response", description: ctx.info["DESCRIPTION"], source: ctx.info["REPOSITORY"], version: ctx.info["VERSION"], ctx.lang),
         )), None).await;

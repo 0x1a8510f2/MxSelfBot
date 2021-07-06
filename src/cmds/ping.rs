@@ -7,10 +7,13 @@ impl Ping { pub const fn new() -> Self { Self {} } }
 
 #[async_trait::async_trait]
 impl crate::cmds::Command for Ping {
-    fn help(&self, short: bool) -> String {
+    fn help(&self, short: bool) -> [String; 2] {
         match short {
-            true => "".to_string(),
-            false => "".to_string(),
+            true => [
+                "Check if the bot is online. The bot should reply with \"Pong 🏓\".".to_string(),
+                "Check if the bot is online. The bot should reply with \"Pong 🏓\".".to_string(),
+            ],
+            false => ["long".to_string(), "".to_string()],
         }
     }
 
@@ -18,7 +21,7 @@ impl crate::cmds::Command for Ping {
         &self,
         ctx: crate::context::Ctx,
     ) {
-        let result = ctx.room.unwrap().send(matrix_sdk::events::AnyMessageEventContent::RoomMessage(matrix_sdk::events::room::message::MessageEventContent::notice_plain(
+        let result = ctx.room.unwrap().send(matrix_sdk::ruma::events::AnyMessageEventContent::RoomMessage(matrix_sdk::ruma::events::room::message::MessageEventContent::notice_plain(
             "Pong 🏓",
         )), None).await;
 

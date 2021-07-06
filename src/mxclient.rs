@@ -12,7 +12,7 @@ use crate::cmds;
 use url;
 use matrix_sdk::{
     self, async_trait,
-    events::{
+    ruma::events::{
         room::message::{MessageEventContent, MessageType, TextMessageEventContent},
         SyncMessageEvent,
     },

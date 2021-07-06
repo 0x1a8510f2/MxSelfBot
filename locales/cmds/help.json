@@ -1,0 +1,8 @@
+{
+    "cmd.help.specific_plain": {
+        "en_GB": "Help for command: $cmd\n\n$help"
+    },
+    "cmd.help.specific_html": {
+        "en_GB": "Help for command: <code>$cmd</code><br/><br/>$help"
+    }
+}
